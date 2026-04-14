@@ -1,0 +1,68 @@
+Crie um código em C altamente otimizado para representar, em modo texto, o tabuleiro de uma simulação de Algoritmo Genético baseada no "Robby the Robot" de Melanie Mitchell.
+
+Abaixo estão as especificações e regras detalhadas do sistema:
+1. O Labirinto e a Representação Visual
+
+    A interface no terminal deve exibir, lado a lado (com quebra de linha/wrap na lateral direita), os tabuleiros em matrizes de 10x10.
+
+    Logo acima de cada tabuleiro, deve constar o número do indivíduo sendo testado.
+
+    Cada casa do tabuleiro contém 50% de chance de ter uma lata (ou seja, exatamente 50 latas sorteadas aleatoriamente por labirinto), com no máximo uma lata por casa.
+
+    Os valores numéricos das casas são: 0 (vazia), 1 (com lata) e 2 (parede/limite do mapa).
+
+    Quando o robô coleta uma lata, o valor da casa onde ele está muda de 1 para 0.
+
+2. O Estado do Robô e o Genoma
+
+    O estado (visão) de cada casinha é definido por uma sequência de números na seguinte ordem: Direita, Esquerda, Baixo, Cima e Robô (Atual). Esses valores indicam o que há na casinha adjacente correspondente e na própria casinha do robô.
+
+    Esses 5 dígitos (em base 3) devem ser convertidos para a base decimal seguindo a fórmula:
+    (Atual * 3^0) + (Cima * 3^1) + (Baixo * 3^2) + (Esquerda * 3^3) + (Direita * 3^4)
+
+    Esse cálculo resulta em exatos 3x3x3x3x3 = 243 estados possíveis.
+
+    A solução para navegação do robô é um indivíduo representado por um genoma com 243 genes. O índice do array do genoma corresponde ao estado numérico convertido, garantindo que o robô tenha uma resposta para qualquer situação do tabuleiro.
+
+    O valor de cada gene determina a ação do robô e varia de 0 a 6:
+    0: ir para cima | 1: ir para baixo | 2: ir para a esquerda | 3: ir para a direita | 4: pegar a latinha | 5: não fazer nada | 6: sortear uma direção.
+
+3. Dinâmica de Simulação e Pontuação
+
+    A simulação inicia com uma população de 200 indivíduos sorteados aleatoriamente (sequências de 243 genes de 0 a 6).
+
+    Cada indivíduo será testado em 10 tabuleiros diferentes. Em cada tabuleiro, o robô começa em uma casa aleatória e executa até 200 movimentos.
+
+    A cada passo, calcula-se o estado convertido em decimal, busca-se o índice correspondente no gene daquele indivíduo, e o robô executa a instrução ali contida, alterando o seu estado no tabuleiro.
+
+    Sistema de Pontuação:
+
+        +10 pontos se pegar uma latinha com sucesso.
+
+        -1 ponto se tentar pegar uma latinha em uma casa vazia.
+
+        -5 pontos se tentar andar em direção a uma parede (o robô não se move).
+
+    Interrupção Antecipada (Early Stop): O teste de um indivíduo deve ser interrompido antes dos 200 movimentos caso ele fique estagnado. A estagnação é decretada se ações subsequentes levarem repetidamente a "não fazer nada" ou a tentar bater na parede mais de uma vez.
+
+    A nota de fitness de cada indivíduo será a média das pontuações acumuladas nos seus 10 labirintos.
+
+4. Seleção, Cruzamento e Repescagem
+
+    Após testar os 200 indivíduos, escolha um número N par de indivíduos com a pontuação mais alta, utilizando uma nota de corte parametrizada.
+
+    Cruzamento (Crossover): Casais gerarão novos descendentes justapondo a primeira parte do genoma do Pai A com a segunda parte do genoma do Pai B. O ponto de corte no array de 243 genes será aleatório para cada casal.
+
+    Mutação: Defina uma taxa de mutação (como parâmetro). Alguns genes selecionados aleatoriamente nos descendentes terão seu valor substituído por um novo número aleatório entre 0 e 6.
+
+    Diversidade e Repescagem: O algoritmo deve reduzir a probabilidade de escolher indivíduos menos aptos, mas não deve descartá-los totalmente. O acasalamento deve ter uma taxa de repescagem contendo indivíduos de baixa nota para garantir diversidade genética, evitando que o algoritmo fique estagnado em um mínimo local.
+
+    O processo se repete com a nova geração de 200 indivíduos, reiniciando os testes em novos conjuntos de labirintos gerados aleatoriamente.
+
+5. Interface Gráfica Auxiliar (Linux)
+
+    O código em C, além da execução no terminal, deve criar e atualizar um processo em janela separada (modo gráfico no Linux) para exibir a curva de evolução da pontuação do indivíduo mais apto.
+
+    O gráfico terá no eixo X todas as gerações avaliadas e no eixo Y a pontuação máxima (variando de -50 a 500).
+
+    Para não estrangular o processamento, essa janela gráfica deve ser atualizada estritamente uma vez a cada 200 testes (a cada fim de geração), mantendo a tela de texto do terminal sendo atualizada continuamente. O código deve priorizar a máxima velocidade de processamento.
