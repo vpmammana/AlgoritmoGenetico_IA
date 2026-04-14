@@ -1,0 +1,37 @@
+crie um código em C para representar em modo texto, o tabuleiro de uma simulação de Algoritmo Genético do tipo Robby the Robot da Melanie Mitchel.
+
+Eu quero um sistema que represente na tela, lado a lado, até wrap na lateral direita da tela, os labirintos representados por tabuleiros de 10x10 casas com 50% de latinhas, com apenas uma latinha por casa do tabuleiro. Cada casa da matriz 10x10 pode ter 3 números: 0 para casa vazia, 1 para casa com lata, 2 para parede.
+
+O estado de cada casinha é dado por uma sequência de números: Direita, Esquerda, Baixo, Cima e Robô (nesta ordem), sendo que Direita é o número da casinha que está à direita de onde está o robo, esquerda é o número da casinha que está à esqueda do robô, cima é o número da casinha acima de onde está o robô, baixo é o número da casinha que está abaixo de onde está o robô e robô é o número da casinha onde está o robô. Esses 5 números devem definir o estado doa casinha onde está o robô.
+
+Isso deve dar 3x3x3x3x3 = 243 estados possíveis para as casinhas.
+
+Quando uma latinha é coletada, o número 1 que estava na casinha é transformado em 0.
+
+Agora esses 5 números podem ser transformados para a base decimal, considerando que os 5 dígitos estão na base 3, ou seja, pegar o valor da casinha que representa o número onde o robô está e multiplicar por 3 elevado a 0, depois o número da casinha acima do robô vezes 3 elevado a 1, depois o número que está na casinha abaixo em relação ao robô e multiplicar por 3 elevado a 2, depois a casinha à esquerda do robô e multiplicar por 3 elevado a 3, e depois o número que está na casinha à direita do robô e multiplicar por 3 elevado a 4, somando cada parcela e teremos o estado de cada casinha transformado para a base decimal.
+
+Agora que sabemos todos os estados possíveis para cada casinha do tabuleiro, vamos pensar nas sequências de genes que represetam uma possível solução para o robô pegar toda as latinhas.
+
+Como temos 243 estados possíveis, precisamos de uma sequência de 243 genes para garantir que a sequência genética tem uma resposta do que fazer para cada estado possível das casinhas do tabuleiro.
+
+Cada gene é a instrução do que o robô deve fazer e teremos 7 possíveis instruções: 0 é vá para cima, 1 é vá para baixo, 2 é vá para a esquerda, 3 é vá para a direita, 4 é pegue a latinha, 5 é não faça nada e 6 é sorteie a direção.
+
+O processo de seleção da sequência de genes deve começar com um conjunto de 200 sequências sorteadas aleatoriamente, cada sequeência com 243 genes. Então teremos 200 indivíduos (sequência de genes) no começo.
+
+Cada um dos indivíduos será submetido aos labirintos, de forma que o robô siga as instruções dos 243 genes de cada indíviduo. Considerando que o robô pode começar em qualquer casinha do tabuleiro, para saber qual gene de um determinado indivíduo pegar para um primeiro posicionamento do robô, é preciso verificar o estado da casinha atual onde o robô está, e seguir a instrução que está naquele gene (de 0 a 6). A instrução seguida levará o robô a um novo estado (ou ele se moveu, ou ele pegou uma latinha, ou ele ficou parado). Uma pontuação será acumulada para cada ação do robô orientada pelo gene (soma -5 se bater na parede, 10 pontos se pegar uma latinha, -1 se ele tentar pegar uma latinha numa casa vazia).
+
+Como já tido, começaremos com 200 indivíduos que serão testados 1 a 1 nos tabuleiros que também são sorteados aleatoriamente, sempre com 50% das casas com latinhas (ou seja, a posição das latinhas no tabuleiro será sorteada para cada uma das latinhas até 50 latinhas).
+
+Cada população será testada num tabuleiro com até 200 movimentos consecutivos por indivíduo, lembrando que cada indivíduo é uma sequência de 243 genes com cada gene podendo valer de 0 a 6, sendo que esses números de 0 a 6 representam as 7 possíveis instruções que eu já mencionei acima. Cada indivíduo testado em cada tabuleiro receberá uma nota que é a somatória de sua pontução para cada um dos 200 movimentos. Então para a primeira casinha ocupada pelo gene, eu verei o estado da casinha pela conversão da base 3 para a base decimal e daí pegarei o gene de ordem do valor decimal convertido para escolher a próxima instrução (gene). Esse processo será realizado até 200 movimentos por gene.
+
+Cada indivíduo deve ser testado em 10 labirintos e a nota de cada indivíduo deve ser a média das notas para cada labirinto. Quando o indivíduo fica evidentemente estagnado, o processo de ve ser interrompido antes de chegar em 200 movimentos. A estagnação deve ser decretada quando estados subsequentes levarem a "ficar parado", ou quando estados subsequentes levarem a bater na parede mais de uma vez. O robô não deve se mover se o movimento for para bater na parede.
+
+Ao final do teste de 200 indivíduos, escolheremos N indivíduos com a pontuação mais alta, N par, casando dois a dois para formar novos indivíduos que são formados pela justaposição da primeira parte do indivíduo 1 com a segunda parte do indivíduo 2, de forma que o ponto de corte para formar um novo indivíduo com 243 genes será aletarório em cada casamento. Além da combinação é preciso definir uma taxa de mutação que permita alterar alguns genes de cada gene selecionado, fazendo a escolha aleatória do gene selecionado e fazendo a escolha aleatória do valor desse gene (de 0 a 6). A proporção de genes que devem sofrer mutação deve ser um parâmetro (taxa de mutação). O casamento deve ser apenas dos indivíduos mais aptos e a nota de corte deve ser um parâmetro. É preciso manter uma taxa de reposição de indivíduos menos aptos para manter a diversidade, de forma a termos de novo um conjunto de 200 indivíduos para uma nova sequẽncia de testes num novo conjunto aletarório de labirintos. Então o algoritmo deve diminuir a probabilidade de escolher indivíduos menos aptos, mas não deve descartar totalmente, para manter a diversidade do conjunto, de outra forma, escolhendo apenas os mais aptos, o algoritmo fica estagnado.
+
+O algoritmo deve recomeçar com uma sequẽncia de 200 indivíduos a cada acasalamento e aplicação de mutação. Os 200 novos indivíduos devem ter uma taxa de repescagem de indivíduos ruins acasalados para garantir diversidade.
+
+O programa em C deve mostrar o número do indivíduo testado e a tabela de números do labirinto em formato 10x10, formando uma matriz de tabuleiros. O número do indivíduo deve estar logo acima da tabela. O Código em C deve criar uma janela em linux separada em modo gráfico para mostrar a evolução da nota do mais apto, num gráfico que tem no eixo x todos os testes realizados e no eixo y a nota que vai até 500 (50 latinhas pegas).
+
+Essa janela do gráfica deve ser atualizada apenas a cada 200 indivíduos, mantendo a janela de texto sendo atualizada. O programa deve ser atualizado para ser o mais rápido possível.
+
+

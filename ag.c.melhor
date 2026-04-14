@@ -1,0 +1,244 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <unistd.h>
+#include <string.h>
+
+#define POP_SIZE 200
+#define GENES 243
+#define MOVES 200
+#define BOARDS 10
+#define CANS 50
+#define GRID_SIZE 10
+
+#define MUTATION_RATE 0.05
+#define ELITISM 20       // Top 20 indivíduos passam direto
+#define REPESCAGEM 10    // Sorteia 10 ruins para garantir diversidade
+#define MAX_GERACOES 500 // Altere se quiser rodar mais ou infinitamente
+
+// Estrutura do Indivíduo
+typedef struct {
+    int genes[GENES];
+    float score;
+} Individual;
+
+// Variáveis Globais
+Individual population[POP_SIZE];
+Individual next_population[POP_SIZE];
+int board[GRID_SIZE][GRID_SIZE];
+float history_best[MAX_GERACOES];
+
+// Funções Auxiliares
+void clear_screen() {
+    printf("\033[H\033[J");
+}
+
+void init_population() {
+    for (int i = 0; i < POP_SIZE; i++) {
+        for (int j = 0; j < GENES; j++) {
+            population[i].genes[j] = rand() % 7;
+        }
+        population[i].score = 0.0;
+    }
+}
+
+void generate_board() {
+    for (int i = 0; i < GRID_SIZE; i++)
+        for (int j = 0; j < GRID_SIZE; j++)
+            board[i][j] = 0; // Limpa tabuleiro
+
+    int cans_placed = 0;
+    while (cans_placed < CANS) {
+        int x = rand() % GRID_SIZE;
+        int y = rand() % GRID_SIZE;
+        if (board[y][x] == 0) {
+            board[y][x] = 1;
+            cans_placed++;
+        }
+    }
+}
+
+int get_cell(int x, int y) {
+    if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return 2; // 2 = Parede
+    return board[y][x];
+}
+
+int get_state(int x, int y) {
+    int current = get_cell(x, y);
+    int up      = get_cell(x, y - 1);
+    int down    = get_cell(x, y + 1);
+    int left    = get_cell(x - 1, y);
+    int right   = get_cell(x + 1, y);
+
+    // Formula Base 3
+    return (current * 1) + (up * 3) + (down * 9) + (left * 27) + (right * 81);
+}
+
+void print_board(int ind_num, int rx, int ry, float current_score) {
+    printf("\033[H"); // Retorna o cursor para o topo sem piscar a tela
+    printf("Indivíduo: %03d | Pontuação Atual: %6.1f\n", ind_num, current_score);
+    for (int y = 0; y < GRID_SIZE; y++) {
+        for (int x = 0; x < GRID_SIZE; x++) {
+            if (x == rx && y == ry) printf("[R]");
+            else if (board[y][x] == 1) printf(" * ");
+            else printf(" . ");
+        }
+        printf("\n");
+    }
+    printf("==================================\n");
+}
+
+int compare_individuals(const void *a, const void *b) {
+    Individual *indA = (Individual *)a;
+    Individual *indB = (Individual *)b;
+    if (indB->score > indA->score) return 1;
+    if (indB->score < indA->score) return -1;
+    return 0;
+}
+
+void update_graph(FILE *gp, int current_gen) {
+    if (!gp) return;
+    fprintf(gp, "plot '-' with lines linewidth 2 linecolor rgb 'blue' title 'Melhor Nota'\n");
+    for (int i = 0; i <= current_gen; i++) {
+        fprintf(gp, "%d %f\n", i, history_best[i]);
+    }
+    fprintf(gp, "e\n");
+    fflush(gp);
+}
+
+int main() {
+    srand(time(NULL));
+    init_population();
+    clear_screen();
+
+    // Inicia processo gráfico (Gnuplot)
+    FILE *gp = popen("gnuplot -persistent", "w");
+    if (gp) {
+        fprintf(gp, "set title 'Robby the Robot - Algoritmo Genético'\n");
+        fprintf(gp, "set xlabel 'Geração'\n");
+        fprintf(gp, "set ylabel 'Média da Nota (Max ~500)'\n");
+        fprintf(gp, "set yrange [-50:500]\n");
+    }
+
+    for (int gen = 0; gen < MAX_GERACOES; gen++) {
+        // Avaliação
+        for (int i = 0; i < POP_SIZE; i++) {
+            float total_score = 0;
+
+            for (int b = 0; b < BOARDS; b++) {
+                generate_board();
+                int rx = rand() % GRID_SIZE;
+                int ry = rand() % GRID_SIZE;
+                int score = 0;
+                int wall_hits = 0;
+                int stagnated = 0;
+
+                for (int m = 0; m < MOVES; m++) {
+                    int state = get_state(rx, ry);
+                    int action = population[i].genes[state];
+                    int moved = 0;
+
+                    // Mostra visualmente apenas o melhor ou primeiros testes para otimizar velocidade
+                    if (gen % 5 == 0 && i == 0 && b == 0 && m % 10 == 0) {
+                        print_board(i, rx, ry, total_score + score);
+                        usleep(10000); // 10ms de pausa para conseguir enxergar
+                    }
+
+                    if (action == 6) action = rand() % 4; // Sorteia direção de movimento (0 a 3)
+
+                    switch (action) {
+                        case 0: // Cima
+                            if (ry > 0) { ry--; moved=1; wall_hits=0; }
+                            else { score -= 5; wall_hits++; }
+                            break;
+                        case 1: // Baixo
+                            if (ry < GRID_SIZE - 1) { ry++; moved=1; wall_hits=0; }
+                            else { score -= 5; wall_hits++; }
+                            break;
+                        case 2: // Esquerda
+                            if (rx > 0) { rx--; moved=1; wall_hits=0; }
+                            else { score -= 5; wall_hits++; }
+                            break;
+                        case 3: // Direita
+                            if (rx < GRID_SIZE - 1) { rx++; moved=1; wall_hits=0; }
+                            else { score -= 5; wall_hits++; }
+                            break;
+                        case 4: // Pegar lata
+                            if (board[ry][rx] == 1) {
+                                score += 10;
+                                board[ry][rx] = 0;
+                            } else {
+                                score -= 1;
+                            }
+                            wall_hits = 0;
+                            break;
+                        case 5: // Parado
+                            stagnated++;
+                            break;
+                    }
+
+                    if (stagnated > 2 || wall_hits > 1) break; // Early stop por estagnação
+                }
+                total_score += score;
+            }
+            population[i].score = total_score / BOARDS;
+        }
+
+        // Ordenar do melhor para o pior
+        qsort(population, POP_SIZE, sizeof(Individual), compare_individuals);
+        history_best[gen] = population[0].score;
+
+        // Atualizar Janela Gráfica (1 vez por geração, ou seja, a cada 200 indivíduos)
+        update_graph(gp, gen);
+
+        // Seleção e Cruzamento (Crossover)
+        int next_idx = 0;
+
+        // 1. Elitismo (copia os melhores intactos)
+        for (int i = 0; i < ELITISM; i++) {
+            next_population[next_idx++] = population[i];
+        }
+
+        // 2. Repescagem de diversidade (pega alguns dos piores para cruzar)
+        int pool[POP_SIZE];
+        int pool_size = 0;
+        for (int i = 0; i < ELITISM * 3; i++) pool[pool_size++] = i; // Pesa mais para os bons
+        for (int i = 0; i < REPESCAGEM; i++) pool[pool_size++] = (POP_SIZE - 1) - i; // Pega o fundão
+
+        // 3. Casamento
+        while (next_idx < POP_SIZE) {
+            int p1 = pool[rand() % pool_size];
+            int p2 = pool[rand() % pool_size];
+
+            int cut_point = rand() % GENES;
+
+            for (int j = 0; j < GENES; j++) {
+                if (j < cut_point) {
+                    next_population[next_idx].genes[j] = population[p1].genes[j];
+                    if (next_idx + 1 < POP_SIZE) next_population[next_idx+1].genes[j] = population[p2].genes[j];
+                } else {
+                    next_population[next_idx].genes[j] = population[p2].genes[j];
+                    if (next_idx + 1 < POP_SIZE) next_population[next_idx+1].genes[j] = population[p1].genes[j];
+                }
+            }
+            next_idx += 2;
+        }
+
+        // 4. Mutação
+        for (int i = ELITISM; i < POP_SIZE; i++) {
+            for (int j = 0; j < GENES; j++) {
+                if (((float)rand() / RAND_MAX) < MUTATION_RATE) {
+                    next_population[i].genes[j] = rand() % 7;
+                }
+            }
+        }
+
+        // Nova geração assume
+        for (int i = 0; i < POP_SIZE; i++) {
+            population[i] = next_population[i];
+        }
+    }
+
+    if (gp) pclose(gp);
+    return 0;
+}
